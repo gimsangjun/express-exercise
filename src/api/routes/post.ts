@@ -6,10 +6,11 @@ import {
   deletePost,
   getPostById,
 } from "../../services/postService";
+import middlewares from "../middlewares";
 
 const router = express.Router();
 
-// GET /posts
+// GET /post
 router.get("/", async (req: Request, res: Response) => {
   try {
     await getAllPosts(req, res);
@@ -19,8 +20,9 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-// POST /posts
-router.post("/", async (req: Request, res: Response) => {
+// POST /post
+// 로그인된 사용자만 접근할수있게 미들웨어 추가
+router.post("/", middlewares.isAuth, async (req: Request, res: Response) => {
   try {
     await addPost(req, res);
   } catch (error) {
@@ -29,8 +31,8 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// PUT /posts/:id
-router.put("/:id", async (req: Request, res: Response) => {
+// PUT /post/:id
+router.put("/:id", middlewares.isAuth, async (req: Request, res: Response) => {
   try {
     await updatePost(req, res);
   } catch (error) {
@@ -39,8 +41,8 @@ router.put("/:id", async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /posts/:id
-router.delete("/:id", async (req: Request, res: Response) => {
+// DELETE /post/:id
+router.delete("/:id", middlewares.isAuth, async (req: Request, res: Response) => {
   try {
     await deletePost(req, res);
   } catch (error) {
@@ -49,7 +51,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
   }
 });
 
-// GET /posts/:id
+// GET /post/:id
 router.get("/:id", async (req: Request, res: Response) => {
   try {
     await getPostById(req, res);

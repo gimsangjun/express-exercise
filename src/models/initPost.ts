@@ -1,13 +1,9 @@
-interface Post {
-  id: number;
-  owner: string;
-  title: string;
-  content: string;
-  tags: string[];
-  date: string;
-}
+// 데이터 초기화할때 쓰는거
+import mongoose from "mongoose";
+import PostModel from "./post"; // 다른 파일에서 정의한 Post 모델 import
 
-const posts: Post[] = [
+// 초기 데이터 배열
+const initialPosts = [
   {
     id: 1,
     owner: "test",
@@ -50,31 +46,24 @@ const posts: Post[] = [
   },
 ];
 
-import { Request, Response } from "express";
+// 컬렉션 초기화 및 초기 데이터 삽입 함수
+export async function initializePosts() {
+  try {
+    // 컬렉션 초기화 (기존 데이터 삭제)
+    await PostModel.deleteMany({});
 
-// 모든 포스트 반환
-export const getAllPosts = (req: Request, res: Response): void => {
-  res.json(posts);
-};
+    // 초기 데이터 삽입
+    await PostModel.insertMany(initialPosts);
 
-// 포스트 추가
-export const addPost = (req: Request, res: Response): void => {
-  const { owner, title, content, tags } = req.body as {
-    owner: string;
-    title: string;
-    content: string;
-    tags: string[];
-  };
+    console.log("초기 데이터 삽입이 완료되었습니다.");
+  } catch (error) {
+    console.error("초기 데이터 삽입 중 오류가 발생했습니다:", error);
+  }
+  // finally {
+  //   // MongoDB 연결 종료
+  //   mongoose.disconnect();
+  // }
+}
 
-  const newPost: Post = {
-    id: posts.length + 1,
-    owner,
-    title,
-    content,
-    tags,
-    date: new Date().toLocaleString(),
-  };
-
-  posts.push(newPost);
-  res.status(201).json(newPost);
-};
+// 초기화 함수 호출 (데이터 삽입)
+// initializePosts();

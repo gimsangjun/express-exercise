@@ -15,8 +15,8 @@ export const getAllPosts = async (req: Request, res: Response): Promise<void> =>
 // 포스트 추가
 export const addPost = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { owner, title, content, tags } = req.body as {
-      owner: string;
+    const owner = req.session.user;
+    const { title, content, tags } = req.body as {
       title: string;
       content: string;
       tags: string[];
@@ -43,16 +43,28 @@ export const addPost = async (req: Request, res: Response): Promise<void> => {
 export const updatePost = async (req: Request, res: Response): Promise<void> => {
   try {
     const postId = req.params.id;
-    const { owner, title, content, tags } = req.body as {
-      owner: string;
+    const owner = req.session.user;
+    const { title, content, tags } = req.body as {
       title: string;
       content: string;
       tags: string[];
     };
 
+    const post = await PostModel.findById(postId);
+
+    if (!post) {
+      res.status(404).json({ message: "포스트를 찾을 수 없습니다." });
+      return;
+    }
+
+    if (post.owner !== owner) {
+      res.status(403).json({ message: "포스트를 업데이트할 권한이 없습니다." });
+      return;
+    }
+
     const updatedPost = await PostModel.findByIdAndUpdate(
       postId,
-      { owner, title, content, tags },
+      { title, content, tags },
       { new: true }
     );
 
@@ -71,7 +83,20 @@ export const updatePost = async (req: Request, res: Response): Promise<void> => 
 // 포스트 삭제
 export const deletePost = async (req: Request, res: Response): Promise<void> => {
   try {
+    const owner = req.session.user;
     const postId = req.params.id;
+
+    const post = await PostModel.findById(postId);
+
+    if (!post) {
+      res.status(404).json({ message: "삭제할 포스트를 찾을 수 없습니다." });
+      return;
+    }
+
+    if (post.owner !== owner) {
+      res.status(403).json({ message: "포스트를 삭제할 권한이 없습니다." });
+      return;
+    }
 
     const deletedPost = await PostModel.findByIdAndDelete(postId);
 

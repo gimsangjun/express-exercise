@@ -1,14 +1,12 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import UserModel, { IUser } from "../models/user";
-import session from "express-session";
 
 // 회원가입
 export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, email, password } = req.body as {
+    const { username, password } = req.body as {
       username: string;
-      email: string;
       password: string;
     };
 
@@ -20,7 +18,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
 
     const hashedPassword = await bcrypt.hash(password, 10); // 비밀번호 해시화
 
-    const newUser: IUser = new UserModel({ username, email, password: hashedPassword });
+    const newUser: IUser = new UserModel({ username, password: hashedPassword });
     await newUser.save();
 
     res.status(201).json({ message: "회원가입이 완료되었습니다." });
@@ -54,15 +52,16 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 로그인 성공 처리 (세션 등)
-    // res.cookie("userToken", user._id, { httpOnly: true });
-    req.session.user = "heelo";
-    console.log(req.session.user);
-    // console.log(req.session.cookie);
-    // console.log(req.session.user);
-    // let example = myDts.test("hi");
-    // console.log(example);
-    res.status(200).json({ message: "로그인 성공" });
+    // TODO: 나중에 session의 데터를 DB에 저장, ex : Redis
+    // 서버측에 데이터 저장.
+    req.session.user = username;
+
+    // 세션 ID를 클라이언트에게 전달
+    // 쿠키에 세션 ID를 저장, 클라이언트(브라우저 자동 적용)에게도 적용됨
+    // httpOnly true로 하면 자바스크립트로 접근이 안되서 리액트에서 못가져옴.
+    res.cookie("sessionID", req.sessionID, { httpOnly: false });
+
+    res.status(200).json({ message: "로그인 성공", sessionID: req.sessionID, username });
   } catch (error) {
     console.error("로그인 중 오류 발생:", error);
     res.status(500).json({ message: "로그인 중 오류 발생" });
@@ -71,30 +70,54 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 // 로그아웃
 export const logout = async (req: Request, res: Response): Promise<void> => {
-  // 로그아웃 처리 (세션 등)
-  res.status(200).json({ message: "로그아웃 성공" });
+  try {
+    // 세션에서 사용자 정보 제거
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("세션 제거 중 오류 발생:", err);
+        res.status(500).json({ message: "로그아웃 중 오류가 발생했습니다." });
+      } else {
+        res.status(200).json({ message: "로그아웃 성공" });
+      }
+    });
+  } catch (error) {
+    console.error("로그아웃 중 오류 발생:", error);
+    res.status(500).json({ message: "로그아웃 중 오류가 발생했습니다." });
+  }
 };
 
-// 로그인한 사용자 정보 확인
+// 로그인한 사용자 정보 확인,
+// 사용자가 브라우저를 새로고침(ex : 리액트의 redux store가 초기화)해도 쿠키의 세션ID값을 통해 다시 정보를 불러옴
 export const profile = async (req: Request, res: Response) => {
   try {
-    // 쿠키에서 사용자 ID 추출
-    const userId = req.cookies.userToken;
-    console.log(userId);
+    // 세션에서 세션 ID 가져오기
+    const sessionID = req.cookies.sessionID;
 
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+    // 세션이 없는 경우
+    if (!sessionID) {
+      res.status(401).json({ message: "로그인이 필요합니다." });
+      return;
     }
 
-    // 사용자 검색
-    const user = await UserModel.findById(userId);
+    // 세션 스토어에서 세션 가져오기
+    req.sessionStore.get(sessionID, (err, session) => {
+      if (err) {
+        console.error("세션 조회 중 오류 발생:", err);
+        res.status(500).json({ message: "세션 조회 중 오류가 발생했습니다." });
+        return;
+      }
 
-    if (!user) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+      // 세션에서 사용자 정보 가져오기
+      const username = session?.user;
 
-    // 사용자 정보 반환
-    res.status(200).json({ user });
+      if (!username) {
+        res.status(401).json({ message: "세션에 사용자 정보가 없습니다." });
+        return;
+      }
+
+      // 사용자 정보 반환
+      res.status(200).json({ username: username });
+    });
   } catch (error) {
     console.error("Profile error:", error);
     res.status(500).json({ message: "Internal server error" });
