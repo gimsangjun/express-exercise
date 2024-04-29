@@ -3,6 +3,9 @@ import config from "./config";
 import postRouter from "./api/routes/post";
 import userRouter from "./api/routes/user";
 import mongoose from "mongoose";
+// TODO: 현재 sesionStore.all이 먹히질않고, 라이브러리 문제(이슈탭에 있음)인데 그 개발자가 업데이트를 안해서 다른 개발자가 임시로 만든거 사용
+// import connectMongoDBSession from "connect-mongodb-session-quickfix";
+// import connectMongoDBSession from "connect-mongodb-session";
 import session from "express-session";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -21,6 +24,14 @@ mongoose.connection.on("connected", () => {
 mongoose.connection.on("error", (err) => {
   console.error(`Failed to connect to ${dbURL} `, err);
 });
+
+// session store 생성 : DB에 세션 데이터를 저장할 경우
+// const MongoDBStore = connectMongoDBSession(session);
+// const store = new MongoDBStore({
+//   uri: dbURL,
+//   collection: "컬렉션 이름.",
+// });
+
 // DB 초기화
 // initializePosts();
 // initializeUsers();
@@ -32,14 +43,15 @@ process.on("SIGINT", async () => {
 });
 
 // ---------------- 미들웨어 설정 -------------------
-// 모든 요청에 대해 CORS 허용
+
 app.use(
   cors({
     origin: "http://localhost:3001", // 클라이언트의 origin을 명시적으로 지정
-    credentials: true, // TODO: credentials 모드가 'include'인 요청을 허용 ======> 좀더 정확ㅎㅣ알아봐야할듯.
+    credentials: true, // handshake과정중에 헤더에 저 옵션이 true로 설정되어 있어서 브라우저가 이를 인식하고 해당 요청에 대해 사용자의 세션 쿠키를 자동으로 포함 시킴
   })
 );
-
+// 모든 요청에 대해 CORS 허용
+// app.use(cors());
 // 특정 도메인만 CORS 허용
 // app.use(cors({ origin: 'http://alloweddomain.com' }));
 // 특정 도메인 및 메서드만 CORS 허용
@@ -51,12 +63,12 @@ app.use(express.static("public")); // 정적 파일 제공을 위한 미들웨�
 app.use(cookieParser());
 app.use(
   session({
-    name: "sessionID", //세션쿠키 이름 (connect.sid가 디폴트)
-    // store: 세션 저장소. 메모리가 디폴트.
+    name: "sessionID", //쿠키의 세션ID 담을 이름 (connect.sid가 디폴트), 자동으로 담김.
+    // store: store , 세션 저장소. 메모리가 디폴트.
     secret: "some-secret-example", // 쿠키 암호화 키
-    resave: false,
+    resave: false, // 매 request 마다 세션을 계속 다시 저장하는 것
     saveUninitialized: true, // 세션에 저장할 내역이 없더라도 세션을 저장할지 여부
-    cookie: { secure: true }, // 그냥 express 아니면 브라우저가 session 쿠키값 자동으로 암호화함. false로 하면 암호화된 값 그대로 넘어와서 못씀.
+    cookie: { secure: false }, // secure 속성이 true로 되어있으면 https에서만 동작하기 떄문에, 쿠키에 세션이 담기지 않음.
   })
 );
 

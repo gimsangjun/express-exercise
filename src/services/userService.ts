@@ -52,15 +52,18 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // TODO: 나중에 session의 데터를 DB에 저장, ex : Redis
+    // 나중에 session의 데이터를 DB에 저장, ex : Redis, 그냥 DB에 해도됨.
     // 서버측에 데이터 저장.
-    req.session.user = username;
+    // 세션 미들웨어가 자동으로 쿠키를 설정함.
+    // res.cookie("sessionID", req.sessionID, { httpOnly: false });
 
     // 세션 ID를 클라이언트에게 전달
     // 쿠키에 세션 ID를 저장, 클라이언트(브라우저 자동 적용)에게도 적용됨
     // httpOnly true로 하면 자바스크립트로 접근이 안되서 리액트에서 못가져옴.
-    res.cookie("sessionID", req.sessionID, { httpOnly: false });
+    // 세션 미들웨어가 자동으로 쿠키를 설정함.
+    // res.cookie("sessionID", req.sessionID, { httpOnly: false });
 
+    // return 그냥 데이터를 할경우, 응답이 사용자에게 가지않음. res.status로 해야됨.
     res.status(200).json({ message: "로그인 성공", sessionID: req.sessionID, username });
   } catch (error) {
     console.error("로그인 중 오류 발생:", error);
@@ -108,7 +111,7 @@ export const profile = async (req: Request, res: Response) => {
       }
 
       // 세션에서 사용자 정보 가져오기
-      const username = session?.user;
+      const username = session?.username;
 
       if (!username) {
         res.status(401).json({ message: "세션에 사용자 정보가 없습니다." });
