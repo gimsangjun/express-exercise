@@ -15,7 +15,7 @@ export const getAllPosts = async (req: Request, res: Response): Promise<void> =>
 // 포스트 추가
 export const addPost = async (req: Request, res: Response): Promise<void> => {
   try {
-    const owner = req.session.user;
+    const user = req.session.username;
     const { title, content, tags } = req.body as {
       title: string;
       content: string;
@@ -23,7 +23,7 @@ export const addPost = async (req: Request, res: Response): Promise<void> => {
     };
 
     const newPost = new PostModel({
-      owner,
+      user,
       title,
       content,
       tags,
@@ -43,7 +43,7 @@ export const addPost = async (req: Request, res: Response): Promise<void> => {
 export const updatePost = async (req: Request, res: Response): Promise<void> => {
   try {
     const postId = req.params.id;
-    const owner = req.session.user;
+    const user = req.session.username;
     const { title, content, tags } = req.body as {
       title: string;
       content: string;
@@ -57,16 +57,17 @@ export const updatePost = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    if (post.owner !== owner) {
+    if (post.owner !== user) {
       res.status(403).json({ message: "포스트를 업데이트할 권한이 없습니다." });
       return;
     }
 
-    const updatedPost = await PostModel.findByIdAndUpdate(
-      postId,
-      { title, content, tags },
-      { new: true }
-    );
+    const updatedPost = await PostModel.findByIdAndUpdate(postId, {
+      title,
+      content,
+      tags,
+      date: new Date(),
+    });
 
     if (!updatedPost) {
       res.status(404).json({ message: "포스트를 찾을 수 없습니다." });
@@ -83,7 +84,7 @@ export const updatePost = async (req: Request, res: Response): Promise<void> => 
 // 포스트 삭제
 export const deletePost = async (req: Request, res: Response): Promise<void> => {
   try {
-    const owner = req.session.user;
+    const user = req.session.username;
     const postId = req.params.id;
 
     const post = await PostModel.findById(postId);
@@ -93,7 +94,7 @@ export const deletePost = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    if (post.owner !== owner) {
+    if (post.owner !== user) {
       res.status(403).json({ message: "포스트를 삭제할 권한이 없습니다." });
       return;
     }
@@ -130,3 +131,27 @@ export const getPostById = async (req: Request, res: Response): Promise<void> =>
     res.status(500).json({ message: "포스트 조회 중 오류 발생" });
   }
 };
+
+// TODO:  Pagegination 구현
+
+// TODO: tags, 아래를 참고, one-to-many 참조 ex) ["ObjectID('1234')", "ObjectID('4321')", "ObjectID('9399')"]
+
+// export interface IUser extends Document {
+//   username: string;
+//   password: string;
+//   itemFavorites: IItemFavorite["_id"][];
+// }
+
+// const UserSchema: Schema = new Schema({
+//   username: { type: String, required: true, unique: true },
+//   password: { type: String, required: true },
+//   itemFavorites: [{ type: Schema.Types.ObjectId, ref: "ItemFavorite" }],
+// });
+
+// const UserModel = mongoose.model<IUser>("User", UserSchema);
+
+// export default UserModel;
+
+///////////////////////
+// 사용자 정보를 가져올 때 populate() 메서드를 사용하여 favorites 필드를 참조하여 실제 아이템 정보를 가져옵니다.
+// const user = await UserModel.findOne({ username }).populate("itemFavorites"); // populate에 스키마 이름.
